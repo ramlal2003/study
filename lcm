@@ -1,0 +1,57 @@
+format short;
+clear all;
+clc;
+
+cost=[19 30 50 10; 70 30 40 60; 40 8 70 20]; %[2 7 4; 3 3 1; 5 5 4; 1 6 2]
+A=[7 9 18]
+B=[5 8 7 14]
+%% To check unbalanced/balanced Problem
+if sum(A)==sum(B)
+    fprintf('The given solution is balanced');
+else
+    fprintf('The given problem is unbalanced');
+    if sum(A)<sum(B)
+        cost(end+1,:)=zeros(1,size(B,2));
+        A(end+1)=sum(B)-sum(A);
+    elseif sum(B)<sum(A)
+        cost(:,end+1)=zeros(1,size(A,2));
+        B(end+1)=sum(A)-sum(B);
+    end
+end
+      
+Cost = cost; %save the cost copy
+X = zeros(size(cost)); %Initialize Allocations
+[m, n] = size(cost); % Finding no of rows/columns a = no. of rows & n
+BFS = m+n-1;% Total no. of basic feasible solutions
+%% Finding the cell(with minimum cost) for the allocations
+for i = 1:size(cost,1)
+    for j= 1:size(cost,2)
+        hh = min(cost(:)); %Finding minimum cost value
+        [row_index, col_index]=find(hh == cost) ; % finding position of minimun
+        x11 = min(A(row_index),B(col_index));
+        [value,index]=max(x11); %maximum allocation
+        ii=row_index(index); % identify row position
+        jj=col_index(index); % identify col position
+        y11=min(A(ii),B(jj)); % Find the value
+        X(ii,jj)=y11;
+        A(ii)=A(ii)-y11;
+        B(jj)=B(jj)-y11;
+        cost(ii,jj)=Inf;
+    end
+end
+
+% Print the initial BFS
+fprintf('Initial BFS \n')
+IBFS=array2table(X);
+disp(IBFS);
+
+% Compute the cost
+Initial_cost=sum(sum(Cost.*X))
+
+% Check for denegenerate and non degenerate
+TotalBFS=length(nonzeros(X));
+if TotalBFS==BFS
+    fprintf('Initial BFS is Non Degenerate\n');
+else
+    fprintf('Initial BFS is Degenerate\n');
+end
