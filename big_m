@@ -1,54 +1,80 @@
-format short
-clear all
+%%%%%%%% Big M Method %%%%%%%%%%%%%%%%
+% max z = 2x1 + 5x2
+% x1 + 4x2 <= 24
+% 3x1 + x2 <= 21
+% x1 + x2 <= 9
+
 clc
-% Cost=[-4 -5 0 0 -1000 -1000 0]
-% A=[3 1 1 0 0 0 27; 3 2 0 -1 1 0 3; 5 5 0 0 0 1 60]
-% % BV=[3 5 6]
-Cost=[-2 -1 0 0 -10000 -10000 0]
-A=[3 1 0 0 1 0 3; 4 3 -1 0 0 1 6 ;1 2 0 1 0 0 3]
-BV=[5 6 4]
- 
-ZjCj=Cost(BV)*A-Cost
- zcj=[Cost;ZjCj;A];
-    bigmtable=array2table(zcj);
-    bigmtable.Properties.VariableNames(1:size(zcj,2))={'x_1','x_2','s_1','s_2','A_1','A_2','sol'}
- 
-RUN= true;
+clear all
+format short
+M = 1e5;
+C = [2 5];
+a = [1 4; 3 1; 1 1];
+b = [24; 21; 9];
+
+[m,n] = size(a);
+s = eye(m);
+A_art = zeros(m,m);
+A = [a s A_art b];
+cost = zeros(1, size(A,2));
+cost(1:n) = C;
+cost(n+m+1:n+2*m) = -M;
+bv = n+m+1 : n+2*m;
+zjcj = cost(bv)*A - cost;
+zcj = [A; zjcj];
+
+disp('Initial Table:')
+array2table(zcj, ...
+    'VariableNames',{'x1','x2','s1','s2','s3','A1','A2','A3','sol'})
+RUN = true;
 while RUN
-    ZC=ZjCj(1:end-1)
-    if any(ZC<0)
-        fprintf('  The current BFS is not optimal\n')
-        [ent_col,pvt_col]=min(ZC)
-        fprintf('Entering Col =%d \n' , pvt_col);
-        sol=A(:,end)
-        Column=A(:,pvt_col)
-        if Column<=0
-            error('LPP is unbounded');
+    if any(zjcj < 0)
+        fprintf('Current BFS is not optimal\n')
+
+        zc = zjcj(1:end-1);
+        [~, pvt_col] = min(zc);
+
+        if all(A(:,pvt_col) <= 0)
+            error('LPP is Unbounded');
         else
-            for i=1:size(A,1)
-                if Column(i)>0
-                    ratio(i)=sol(i)./Column(i)
-                else
-                    ratio(i)=inf
+            sol = A(:,end);
+            column = A(:,pvt_col);
+
+            ratio = inf(m,1);
+            for i=1:m
+                if column(i) > 0
+                    ratio(i) = sol(i)/column(i);
                 end
             end
-            [MinRatio,pvt_row]=min(ratio)
-            fprintf('leaving Row=%d \n', pvt_row);
+
+            [~, pvt_row] = min(ratio);
         end
-        BV(pvt_row)=pvt_col;
-        pvt_key=A(pvt_row,pvt_col);
-        A(pvt_row,:)=A(pvt_row,:)./ pvt_key;
-        for i=1:size(A,1)
-            if i~=pvt_row
-                A(i,:)=A(i,:)-A(i,pvt_col).*A(pvt_row,:);
+
+        bv(pvt_row) = pvt_col;
+        pvt_key = A(pvt_row,pvt_col);
+
+        A(pvt_row,:) = A(pvt_row,:) / pvt_key;
+
+        for i=1:m
+            if i ~= pvt_row
+                A(i,:) = A(i,:) - A(i,pvt_col)*A(pvt_row,:);
             end
         end
-        ZjCj=ZjCj-ZjCj(pvt_col).*A(pvt_row,:)
-        ZCj=[ZjCj;A]
-        TABLE=array2table(ZCj);
-        TABLE.Properties.VariableNames(1:size(ZCj,2))={'x_1','x_2','s_1','s_2','A_1','A_2','sol'}
+
+        zjcj = zjcj - zjcj(pvt_col)*A(pvt_row,:);
+        zcj = [A; zjcj];
+
+        disp('Next Table:')
+        array2table(zcj, ...
+         'VariableNames',{'x1','x2','s1','s2','s3','A1','A2','A3','sol'})
+
     else
-        RUN=false;
-        fprintf('  Current BFS is Optimal \n');
+        RUN = false;
+        fprintf('Optimal solution reached\n')
     end
 end
+
+solution = zeros(1, size(A,2));
+solution(bv) = A(:,end);
+
+fprintf('Optimal Value Z = %f\n', zjcj(end))
