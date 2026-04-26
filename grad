@@ -1,7 +1,7 @@
 clc;
 clear all;
 f=@(x1,x2)(x1^2+2*x2^2)
-grad_f=@(x1,x2)(2*x1+4*x2)
+grad_f=@(x1,x2)[2*x1+4*x2]
 x=[3;3];
 max_itr=100;
 tol=1e-6;
