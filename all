@@ -1,0 +1,254 @@
+%%%%%%%% Simplex Method %%%%%%%%%%%%%%%%
+%max z=2x1+5X2
+%x1+4x2<=24
+%3x1+1x2<=21
+%x1+x2<=9
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+clc
+clear all
+format short
+%% Input the parameters
+C=[2 5];
+a=[1 4; 3 1; 1 1];
+b=[24; 21; 9];
+s=eye(size(a,1));
+A=[a s b];
+Noofvariables=size(a,2);
+cost=zeros(1,size(A,2));
+cost(1:Noofvariables)=C;
+%% Initial Table
+bv= Noofvariables+1:1:size(A,2)-1;
+zjcj=cost(bv)*A-cost;
+zcj=[A; zjcj];
+simptable=array2table(zcj);
+simptable.Properties.VariableNames(1:size(zcj,2))={'x_1','x_2','s_1','s_2','s_3','sol'}
+%% Start Iteration
+RUN=true;
+while RUN
+if any(zjcj<0); %check for (most) negative value
+    fprintf(' the current BFS is not optimal \n')
+   zc=zjcj(1:end-1);
+   [Enter_val, pvt_col]= min(zc);
+   if all(A(:,pvt_col)<=0)
+    error('LPP is Unbounded all enteries are <=0 in column %d',pvt_col);
+   else
+       sol=A(:,end);
+       column=A(:,pvt_col);
+       for i=1:size(A,1)
+         if column(i)>0
+            ratio(i)= sol(i)./column(i);
+         else
+            ratio(i)=inf;
+         end
+       end
+       [leaving_val, pvt_row]=min(ratio);
+   end
+bv(pvt_row)=pvt_col;
+pvt_key=A(pvt_row, pvt_col);
+A(pvt_row,:)=A(pvt_row,:)./pvt_key;
+for i=1:size(A,1)
+    if i~=pvt_row
+        A(i,:)=A(i,:)-A(i, pvt_col).*A(pvt_row,:);
+    end
+end
+    zjcj=zjcj-zjcj(pvt_col).*A(pvt_row,:);
+    zcj=[A; zjcj];
+    table=array2table(zcj);
+    table.Properties.VariableNames(1:size(zcj,2))={'x_1','x_2','s_1','s_2','s_3','sol'}
+else
+    RUN=false;
+    fprintf('The current BFS is optimal \n')
+end
+end
+
+
+%%%%%%%% Big M Method %%%%%%%%%%%%%%%%
+% max z = 2x1 + 5x2
+% x1 + 4x2 <= 24
+% 3x1 + x2 <= 21
+% x1 + x2 <= 9
+
+clc
+clear all
+format short
+M = 1e5;
+C = [2 5];
+a = [1 4; 3 1; 1 1];
+b = [24; 21; 9];
+
+[m,n] = size(a);
+s = eye(m);
+A_art = zeros(m,m);
+A = [a s A_art b];
+cost = zeros(1, size(A,2));
+cost(1:n) = C;
+cost(n+m+1:n+2*m) = -M;
+bv = n+m+1 : n+2*m;
+zjcj = cost(bv)*A - cost;
+zcj = [A; zjcj];
+
+disp('Initial Table:')
+array2table(zcj, ...
+    'VariableNames',{'x1','x2','s1','s2','s3','A1','A2','A3','sol'})
+RUN = true;
+while RUN
+    if any(zjcj < 0)
+        fprintf('Current BFS is not optimal\n')
+
+        zc = zjcj(1:end-1);
+        [~, pvt_col] = min(zc);
+
+        if all(A(:,pvt_col) <= 0)
+            error('LPP is Unbounded');
+        else
+            sol = A(:,end);
+            column = A(:,pvt_col);
+
+            ratio = inf(m,1);
+            for i=1:m
+                if column(i) > 0
+                    ratio(i) = sol(i)/column(i);
+                end
+            end
+
+            [~, pvt_row] = min(ratio);
+        end
+
+        bv(pvt_row) = pvt_col;
+        pvt_key = A(pvt_row,pvt_col);
+
+        A(pvt_row,:) = A(pvt_row,:) / pvt_key;
+
+        for i=1:m
+            if i ~= pvt_row
+                A(i,:) = A(i,:) - A(i,pvt_col)*A(pvt_row,:);
+            end
+        end
+
+        zjcj = zjcj - zjcj(pvt_col)*A(pvt_row,:);
+        zcj = [A; zjcj];
+
+        disp('Next Table:')
+        array2table(zcj, ...
+         'VariableNames',{'x1','x2','s1','s2','s3','A1','A2','A3','sol'})
+
+    else
+        RUN = false;
+        fprintf('Optimal solution reached\n')
+    end
+end
+
+solution = zeros(1, size(A,2));
+solution(bv) = A(:,end);
+
+fprintf('Optimal Value Z = %f\n', zjcj(end))
+
+
+%%%%%%%
+format short;
+clear all;
+clc;
+
+cost=[19 30 50 10; 70 30 40 60; 40 8 70 20]; %[2 7 4; 3 3 1; 5 5 4; 1 6 2]
+A=[7 9 18] %supply
+B=[5 8 7 14] %demand
+%% To check unbalanced/balanced Problem
+if sum(A)==sum(B)
+    fprintf('The given solution is balanced');
+else
+    fprintf('The given problem is unbalanced');
+    if sum(A)<sum(B)
+        cost(end+1,:)=zeros(1,size(B,2));
+        A(end+1)=sum(B)-sum(A);
+    elseif sum(B)<sum(A)
+        cost(:,end+1)=zeros(1,size(A,2));
+        B(end+1)=sum(A)-sum(B);
+    end
+end
+      
+Cost = cost; %save the cost copy
+X = zeros(size(cost)); %Initialize Allocations
+[m, n] = size(cost); % Finding no of rows/columns a = no. of rows & n
+BFS = m+n-1;% Total no. of basic feasible solutions
+%% Finding the cell(with minimum cost) for the allocations
+for i = 1:size(cost,1)
+    for j= 1:size(cost,2)
+        hh = min(cost(:)); %Finding minimum cost value
+        [row_index, col_index]=find(hh == cost) ; % finding position of minimun
+        x11 = min(A(row_index),B(col_index));
+        [value,index]=max(x11); %maximum allocation
+        ii=row_index(index); % identify row position
+        jj=col_index(index); % identify col position
+        y11=min(A(ii),B(jj)); % Find the value
+        X(ii,jj)=y11;
+        A(ii)=A(ii)-y11;
+        B(jj)=B(jj)-y11;
+        cost(ii,jj)=Inf;
+    end
+end
+
+% Print the initial BFS
+fprintf('Initial BFS \n')
+IBFS=array2table(X);
+disp(IBFS);
+
+% Compute the cost
+Initial_cost=sum(sum(Cost.*X))
+
+% Check for denegenerate and non degenerate
+TotalBFS=length(nonzeros(X));
+if TotalBFS==BFS
+    fprintf('Initial BFS is Non Degenerate\n');
+else
+    fprintf('Initial BFS is Degenerate\n');
+end
+
+%%%%%%
+clc;
+clear all;
+f=@(x1,x2)(x1^2+2*x2^2)
+grad_f=@(x1,x2)[2*x1+4*x2]
+x=[3;3];
+max_itr=100;
+tol=1e-6;
+alpha=0.1;
+fprintf('initial point:(%f,%f)',x(1),x(2))
+for i=1:max_itr
+    gradient = grad_f(x(1),x(2));
+    if norm(gradient)<tol
+        fprintf('\n cpnverged after %d iterations',i-1);
+        break;
+    end
+    x=x-alpha*gradient;
+    fprintf('\n iteration %d: x=(%f,%f),f(x)=%f',i,x(1),x(2),f(x(1),x(2)));
+end
+fprintf('\n final solution:(%f,%f)',x(1),x(2));
+fprintf('\n minimum function value:%f',f(x(1),x(2)));
+
+
+
+%%%%%%%%
+clc;
+clear all;
+format short
+% starting initial point
+a=0    
+b=0
+
+%syms x y a1;
+%f= @(x,y) x*y;
+
+f= @(x,y) 3*x^2-4*x*y+2*y^2+4*x+6
+
+grad=@(x,y) [6*x-4*y+4 , -4*x+4*y]
+for k=1:4
+grad(a,b)
+d=-grad(a,b)/norm(grad(a,b))
+
+%fun=@(z)(a+z*d(1))*(b+z*d(2)) 
+fun=@(z) 3*(a+z*d(1))^2-4*(a+z*d(1))*(b+z*d(2))+2*(b+z*d(2))^2+4*(a+z*d(1))+6;
+x1 = fminbnd(fun,0,10000)
+a=a+x1*d(1)
+b=b+x1*d(2)
+f(a,b)
+end
